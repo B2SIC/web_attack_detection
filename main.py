@@ -1,16 +1,13 @@
-import pandas as pd
-import re
-import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score,f1_score, precision_score, recall_score
+from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 
 def filtering(raw_data):
     return raw_data.replace('\n', ' ')
 
 def parsing(path):  # 파싱을 진행하는 함수
-    with open(path, 'r', encoding = 'utf-8') as f:  # 파일을 읽어들이고 ['로그','로그',...] 이런식으로 로그를 구조화
+    with open(path, 'r', encoding = 'utf-8') as f:
         train = []
         para = ""
         filter_tuple = ('GET', 'POST', 'PUT')
@@ -25,7 +22,6 @@ def parsing(path):  # 파싱을 진행하는 함수
                     para += l
             else:
                 if para != '':
-                    # if para[:4] == 'POST' or para[:3] == 'PUT': # Method가 POST인 경우 예외적으로 바디까지 가져옵니다.
                     if para.startswith(('POST', 'PUT')):
                         para += f.readline()
                     train.append(filtering(para))
@@ -46,21 +42,28 @@ def vectorize(train_x, test_x): # 문장을 벡터로 만듭니다 해당 코드
     tf = tf.fit(train_x)
     train_vec = tf.transform(train_x)
     test_vec = tf.transform(test_x)
-    return train_vec,test_vec
+    return train_vec, test_vec
 
-def train(train_vec, train_y): # 랜덤 포레스트로 훈련 시킵니다. 모델을 바꾸고 싶다면 이 함수를 변경해야 합니다.
-    # rf = RandomForestClassifier()
-    rf = LogisticRegression(random_state=0, max_iter=10000)
+def train(train_vec, train_y):
+    rf = LogisticRegression(C=3, random_state=0, max_iter=10000)
     rf.fit(train_vec, train_y)
+
+    # 최적의 하이퍼 파라미터 찾기
+    # params = {'penalty': ['l2', 'l1'],
+    #           'C': [0.01, 0.1, 1, 3, 5, 10]}
+    # #
+    # grid_clf = GridSearchCV(rf, param_grid=params, scoring='accuracy', cv=3)
+    # grid_clf.fit(train_vec, train_y)
+    # print(grid_clf.best_params_, grid_clf.best_score_)
     return rf
 
-def test(test_y, test_vec, rf): #입력 받은 테스트와 모델로 테스트를 실시합니다
+def test(test_y, test_vec, rf):
     pred = rf.predict(test_vec)
 
-    print("Accuracy Score:", accuracy_score(test_y, pred))  # Accuracy는 올바르게 예측된 데이터의 수를 전체 데이터로 나눈 값
+    print("Accuracy Score:", accuracy_score(test_y, pred))
     print("Precision Score:",precision_score(test_y, pred))
     print("Recall Score:", recall_score(test_y, pred))
-    print("F1 Score:", f1_score(test_y, pred))  # F1 Score는 Precision과 Recall의 조화평균 값
+    print("F1 Score:", f1_score(test_y, pred))
 
     return pred
 
@@ -69,10 +72,9 @@ test_x, test_y = dataset('./data/','test')
 
 train_vec, test_vec = vectorize(train_x, test_x)
 rf = train(train_vec, train_y)
-# rf = train(test_vec, test_y)
 pred = test(test_y, test_vec, rf)
 
 tf = TfidfVectorizer()
 tf = tf.fit(train_x)
 
-print(len(tf.vocabulary_))  # 고유 단어 개수 확인
+# print(len(tf.vocabulary_))  # 고유 단어 개수 확인
